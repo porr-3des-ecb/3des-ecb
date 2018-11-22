@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# Output directory
+build
+
+# Editor files
+*.sublime-workspace
