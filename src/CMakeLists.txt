@@ -1,9 +1,9 @@
-cmake_minimum_required (VERSION 3.5)
+cmake_minimum_required (VERSION 3.10)
 
 project (TDES_ECB
 	VERSION 0.0.1
 	DESCRIPTION "Comparison of different parallel/concurrent implementations of a 3DES-ECB cipher"
-	HOMEPAGE_URL "https://github.com/porr-3des-ecb"
+	LANGUAGES CXX
 )
 
 # Set standard to C++17
