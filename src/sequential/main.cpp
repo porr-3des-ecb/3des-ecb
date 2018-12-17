@@ -2,9 +2,7 @@
 #include <fstream>
 #include <string>
 
-int tdesSequential(std::istream input, std::ostream output, std::string key) {
-	/// TODO
-}
+#include "TDESSequential.hpp"
 
 int main(int argc, char const *argv[]) {
 	if (argc != 4) {
@@ -28,7 +26,7 @@ int main(int argc, char const *argv[]) {
 
 	/// TODO: start time measurements
 
-	tdesSequential(iFile, oFile, key);
+	TDESSequential sequentialEncoder(key);
 
 	/// TODO: end and display time measurements
 
