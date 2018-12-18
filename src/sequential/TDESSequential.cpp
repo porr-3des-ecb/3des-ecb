@@ -143,7 +143,7 @@ std::string TDESSequential::decode(std::string message) {
 
 	// Decode
 	// Output string
-	std::string encodedMessage;
+	std::string decodedMessage;
 	// Iterate over blocks
 	int blockCount = message.length() / 16;
 	for (int i = 0; i < blockCount; ++i) {
@@ -157,8 +157,8 @@ std::string TDESSequential::decode(std::string message) {
 		// Return as hex string
 		std::stringstream hexString;
 		hexString << std::hex << std::setfill('0') << std::setw(16) << blockPass3;
-		encodedMessage.append(hexString.str());
+		decodedMessage.append(hexString.str());
 	}
 
-	return encodedMessage;
+	return decodedMessage;
 }
