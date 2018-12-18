@@ -109,10 +109,11 @@ std::string TDESSequential::encode(std::string message) {
 	message.append(padding, '0');
 
 	// Encode
-	// Output string
-	std::string encodedMessage;
-	// Iterate over blocks
+	// Output strings
 	int blockCount = message.length() / 16;
+	std::string encodedMessages[blockCount];
+
+	// Iterate over blocks
 	for (int i = 0; i < blockCount; ++i) {
 		// Parse hex block into 64-bit
 		uint64_t block = std::stoull(message.substr(16 * i, 16), 0, 16);
@@ -124,9 +125,13 @@ std::string TDESSequential::encode(std::string message) {
 		// Return as hex string
 		std::stringstream hexString;
 		hexString << std::hex << std::setfill('0') << std::setw(16) << blockPass3;
-		encodedMessage.append(hexString.str());
+		encodedMessages[i] = hexString.str();
 	}
 
+	std::string encodedMessage;
+	for (int i = 0; i < blockCount; ++i) {
+		encodedMessage.append(encodedMessages[i]);
+	}
 	return encodedMessage;
 }
 
@@ -142,10 +147,11 @@ std::string TDESSequential::decode(std::string message) {
 	message.append(padding, '0');
 
 	// Decode
-	// Output string
-	std::string decodedMessage;
-	// Iterate over blocks
+	// Output strings
 	int blockCount = message.length() / 16;
+	std::string decodedMessages[blockCount];
+
+	// Iterate over blocks
 	for (int i = 0; i < blockCount; ++i) {
 		// Parse hex block into 64-bit
 		uint64_t block = std::stoull(message.substr(16 * i, 16), 0, 16);
@@ -157,8 +163,12 @@ std::string TDESSequential::decode(std::string message) {
 		// Return as hex string
 		std::stringstream hexString;
 		hexString << std::hex << std::setfill('0') << std::setw(16) << blockPass3;
-		decodedMessage.append(hexString.str());
+		decodedMessages[i] = hexString.str();
 	}
 
+	std::string decodedMessage;
+	for (int i = 0; i < blockCount; ++i) {
+		decodedMessage.append(decodedMessages[i]);
+	}
 	return decodedMessage;
 }
