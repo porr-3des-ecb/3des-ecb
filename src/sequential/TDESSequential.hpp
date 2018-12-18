@@ -6,8 +6,8 @@ class TDESSequential : public TDESInterface {
 
 		void prepareKeys(uint64_t key);
 
-		std::string encodeBlock(std::string block);
-		std::string decodeBlock(std::string block);
+		uint64_t encodeBlock(uint64_t block);
+		uint64_t decodeBlock(uint64_t block);
 
 	public:
 		using TDESInterface::TDESInterface;

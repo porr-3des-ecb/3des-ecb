@@ -27,6 +27,10 @@ int main(int argc, char const *argv[]) {
 	/// TODO: start time measurements
 
 	TDESSequential sequentialEncoder(key);
+	std::string testInHex = "0123456789ABCDEF";
+	std::string testOutHex = sequentialEncoder.encode(testInHex);
+
+	std::cout << testOutHex << std::endl;
 
 	/// TODO: end and display time measurements
 

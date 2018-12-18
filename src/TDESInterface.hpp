@@ -5,7 +5,7 @@
 #include <string>
 
 class TDESInterface {
-	private:
+	protected:
 		uint64_t keys[3];
 
 		bool verifyKey(int keyIndex);
