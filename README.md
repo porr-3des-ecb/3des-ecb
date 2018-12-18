@@ -20,3 +20,18 @@ openssl enc -des-ede3 -pass pass:<some_password> -p -in testInFile.txt -out test
 ```
 And save the displayed key.
 Example key saved in `keys/key1.txt`.
+
+## Building
+```sh
+mkdir -p build
+cd build
+cmake ../src
+make
+```
+
+## Testing
+```sh
+build/sequential/tdes_sequential tests/inFile1.txt outFile1.txt `cat keys/key1.txt`
+build/sequential/tdes_sequential tests/inFile2.txt outFile2.txt `cat keys/key1.txt`
+build/sequential/tdes_sequential tests/inFile3.txt outFile3.txt `cat keys/key1.txt`
+```
