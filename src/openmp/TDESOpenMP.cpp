@@ -111,13 +111,14 @@ std::string TDESOpenMP::encode(std::string message) {
 	message.append(padding, '0');
 
 	// Encode
-	// Output string
+	// Output strings
 	int blockCount = message.length() / 16;
 	std::string encodedMessages[blockCount];
-	// Iterate over blocks
 
-	#pragma omp parallel for shared(message, encodedMessages, blockCount)
-	for (int i = 0; i < blockCount; ++i) {
+	// Iterate over blocks
+	int i = 0;
+	#pragma omp parallel for shared(message, encodedMessages, blockCount) private(i)
+	for (i = 0; i < blockCount; ++i) {
 		// Parse hex block into 64-bit
 		uint64_t block = std::stoull(message.substr(16 * i, 16), 0, 16);
 		// Encode with k1, decode with k2, encode with k3
@@ -152,12 +153,14 @@ std::string TDESOpenMP::decode(std::string message) {
 	///TODO: parallelize!
 
 	// Decode
-	// Output string
-	std::string decodedMessage;
-	// Iterate over blocks
+	// Output strings
 	int blockCount = message.length() / 16;
-	std::string
-	for (int i = 0; i < blockCount; ++i) {
+	std::string decodedMessages[blockCount];
+
+	// Iterate over blocks
+	int i = 0;
+	#pragma omp parallel for shared(message, decodedMessages, blockCount) private(i)
+	for (i = 0; i < blockCount; ++i) {
 		// Parse hex block into 64-bit
 		uint64_t block = std::stoull(message.substr(16 * i, 16), 0, 16);
 		// Decode with k3, encode with k2, decode with k1
@@ -168,8 +171,12 @@ std::string TDESOpenMP::decode(std::string message) {
 		// Return as hex string
 		std::stringstream hexString;
 		hexString << std::hex << std::setfill('0') << std::setw(16) << blockPass3;
-		decodedMessage.append(hexString.str());
+		decodedMessages[i] = hexString.str();
 	}
 
+	std::string decodedMessage;
+	for (int i = 0; i < blockCount; ++i) {
+		decodedMessage.append(decodedMessages[i]);
+	}
 	return decodedMessage;
 }
