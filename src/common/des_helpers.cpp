@@ -32,4 +32,5 @@ void printBit(const uint64_t in, const int bitSize) {
 	std::cout << std::endl;
 }
 
+// namespace TDES
 }
