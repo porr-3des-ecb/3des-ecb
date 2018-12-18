@@ -2,14 +2,14 @@
 
 class TDESSequential : public TDESInterface {
 	private:
-		uint64_t pKeys[16];
+		bool keysPrepared;
+		uint64_t pKeys[3][16];
 
-		void prepareKeys(uint64_t key);
-
-		uint64_t encodeBlock(uint64_t block);
-		uint64_t decodeBlock(uint64_t block);
+		void prepareKeys();
+		uint64_t processBlock(uint64_t block, int key = 0, bool decode = false);
 
 	public:
+		// Inherit constructor
 		using TDESInterface::TDESInterface;
 		~TDESSequential();
 

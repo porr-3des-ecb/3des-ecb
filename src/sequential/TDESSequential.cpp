@@ -2,43 +2,48 @@
 #include "../common/des_defines.hpp"
 #include "../common/des_helpers.hpp"
 
+#include <iomanip>
+#include <iostream>
 #include <string>
 #include <sstream>
-#include <iostream>
-#include <bitset>
 
 TDESSequential::~TDESSequential() {}
 
-void TDESSequential::prepareKeys(uint64_t key) {
-	// Initial key permutation
-	uint64_t permutedKey = TDES::permute(key, 64, 56, TDES::PERMUTATION_TABLE_PC1);
+void TDESSequential::prepareKeys() {
+	for (int k = 0; k < 3; ++k) {
+		uint64_t key = this->keys[k];
 
-	// Left/right half-key rotations
-	uint64_t previousKey = permutedKey;
-	for (int i = 0; i < 16; ++i) {
-		// Split the key in 2
-		uint64_t lKey = (previousKey >> 28) & 0x0fffffff;
-		uint64_t rKey = previousKey & 0x0fffffff;
+		// Initial key permutation
+		uint64_t permutedKey = TDES::permute(key, 64, 56, TDES::PERMUTATION_TABLE_PC1);
 
-		// Left shift and rotate the key parts the correct number of times
-		int shifts = (i == 0 || i == 1 || i == 8 || i == 15) ? 1 : 2;
-		for (int j = 0; j < shifts; ++j) {
-			lKey = TDES::lshift(lKey, 28);
-			rKey = TDES::lshift(rKey, 28);
+		// Left/right half-key rotations
+		uint64_t previousKey = permutedKey;
+		uint64_t pKeys[16];
+		for (int i = 0; i < 16; ++i) {
+			// Split the key in 2
+			uint64_t lKey = (previousKey >> 28) & 0x0fffffff;
+			uint64_t rKey = previousKey & 0x0fffffff;
+
+			// Left shift and rotate the key parts the correct number of times
+			int shifts = (i == 0 || i == 1 || i == 8 || i == 15) ? 1 : 2;
+			for (int j = 0; j < shifts; ++j) {
+				lKey = TDES::lshift(lKey, 28);
+				rKey = TDES::lshift(rKey, 28);
+			}
+
+			// Save the key
+			previousKey = (lKey << 28) + rKey;
+			pKeys[i] = previousKey;
 		}
 
-		// Save the key
-		previousKey = (lKey << 28) + rKey;
-		this->pKeys[i] = previousKey;
-	}
-
-	// Final key permutation
-	for (int i = 0; i < 16; ++i) {
-		this->pKeys[i] = TDES::permute(this->pKeys[i], 56, 48, TDES::PERMUTATION_TABLE_PC2);
+		// Final key permutation
+		for (int i = 0; i < 16; ++i) {
+			this->pKeys[k][i] = TDES::permute(pKeys[i], 56, 48, TDES::PERMUTATION_TABLE_PC2);
+		}
 	}
 }
 
-uint64_t TDESSequential::encodeBlock(uint64_t block) {
+uint64_t TDESSequential::processBlock(uint64_t block, int key, bool decode) {
 	// Initial permutation
 	uint64_t permutedBlock = TDES::permute(block, 64, 64, TDES::PERMUTATION_TABLE_IP);
 
@@ -53,7 +58,11 @@ uint64_t TDESSequential::encodeBlock(uint64_t block) {
 		uint64_t extendedBlock = TDES::permute(previousRBlock, 32, 48, TDES::SELECTION_TABLE_E);
 
 		// XOR the extended block with a prepared key
-		uint64_t xoredBlock = this->pKeys[i] ^ extendedBlock;
+		uint64_t pKey = this->pKeys[key][i];
+		if (decode) {
+			pKey = this->pKeys[key][15 - i];
+		}
+		uint64_t xoredBlock = pKey ^ extendedBlock;
 
 		// Do the "selection-boxes" magic
 		uint64_t boxSelectedBlock = 0;
@@ -88,19 +97,68 @@ uint64_t TDESSequential::encodeBlock(uint64_t block) {
 	return finalBlock;
 }
 
-uint64_t TDESSequential::decodeBlock(uint64_t block) {}
-
 std::string TDESSequential::encode(std::string message) {
-	// TODO: block-divide
-	// TODO: triplify the DES
+	this->prepareKeys();
 
-	this->prepareKeys(this->keys[0]);
+	// Pad the message with zeros
+	// Message is hex-encoded -> 16 characters = 64 bits
+	int padding = 16 - message.length() % 16;
+	if (padding == 16) {
+		padding = 0;
+	}
+	message.append(padding, '0');
 
-	uint64_t block = std::stoull(message.substr(0, 16), 0, 16);
-	uint64_t encodedBlock = this->encodeBlock(block);
-	std::stringstream hexSS;
-	hexSS << std::hex << encodedBlock;
-	return hexSS.str();
+	// Encode
+	// Output string
+	std::string encodedMessage;
+	// Iterate over blocks
+	int blockCount = message.length() / 16;
+	for (int i = 0; i < blockCount; ++i) {
+		// Parse hex block into 64-bit
+		uint64_t block = std::stoull(message.substr(16 * i, 16), 0, 16);
+		// Encode with k1, decode with k2, encode with k3
+		uint64_t blockPass1 = this->processBlock(block, 0, false);
+		uint64_t blockPass2 = this->processBlock(blockPass1, 1, true);
+		uint64_t blockPass3 = this->processBlock(blockPass2, 2, false);
+
+		// Return as hex string
+		std::stringstream hexString;
+		hexString << std::hex << std::setfill('0') << std::setw(16) << blockPass3;
+		encodedMessage.append(hexString.str());
+	}
+
+	return encodedMessage;
 }
 
-std::string TDESSequential::decode(std::string message) {}
+std::string TDESSequential::decode(std::string message) {
+	this->prepareKeys();
+
+	// Pad the message with zeros
+	// Message is hex-encoded -> 16 characters = 64 bits
+	int padding = 16 - message.length() % 16;
+	if (padding == 16) {
+		padding = 0;
+	}
+	message.append(padding, '0');
+
+	// Decode
+	// Output string
+	std::string encodedMessage;
+	// Iterate over blocks
+	int blockCount = message.length() / 16;
+	for (int i = 0; i < blockCount; ++i) {
+		// Parse hex block into 64-bit
+		uint64_t block = std::stoull(message.substr(16 * i, 16), 0, 16);
+		// Decode with k3, encode with k2, decode with k1
+		uint64_t blockPass1 = this->processBlock(block, 2, true);
+		uint64_t blockPass2 = this->processBlock(blockPass1, 1, false);
+		uint64_t blockPass3 = this->processBlock(blockPass2, 0, true);
+
+		// Return as hex string
+		std::stringstream hexString;
+		hexString << std::hex << std::setfill('0') << std::setw(16) << blockPass3;
+		encodedMessage.append(hexString.str());
+	}
+
+	return encodedMessage;
+}
