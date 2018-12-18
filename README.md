@@ -30,8 +30,16 @@ make
 ```
 
 ## Testing
+### Sequential
 ```sh
 build/sequential/tdes_sequential tests/inFile1.txt outFile1.txt `cat keys/key1.txt`
 build/sequential/tdes_sequential tests/inFile2.txt outFile2.txt `cat keys/key1.txt`
 build/sequential/tdes_sequential tests/inFile3.txt outFile3.txt `cat keys/key1.txt`
+```
+
+### OpenMP
+```sh
+build/openmp/tdes_openmp tests/inFile1.txt outFile1.txt `cat keys/key1.txt`
+build/openmp/tdes_openmp tests/inFile2.txt outFile2.txt `cat keys/key1.txt`
+build/openmp/tdes_openmp tests/inFile3.txt outFile3.txt `cat keys/key1.txt`
 ```
