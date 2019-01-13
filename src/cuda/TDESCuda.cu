@@ -7,12 +7,12 @@
 #include <string>
 #include <sstream>
 #include <cuda_runtime.h>
-#include <helper_functions.h>
-#include <helper_cuda.h>
+//#include <helper_functions.h>
+//#include <helper_cuda.h>
 
-TDESSequential::~TDESSequential() {}
+TDESCuda::~TDESCuda() {}
 
-void TDESSequential::prepareKeys() {
+void TDESCuda::prepareKeys() {
 	for (int k = 0; k < 3; ++k) {
 		uint64_t key = this->keys[k];
 
@@ -47,7 +47,7 @@ void TDESSequential::prepareKeys() {
 }
 
 __device__
-uint64_t TDESSequential::processBlock(uint64_t block, int key, bool decode) {
+uint64_t TDESCuda::processBlock(uint64_t block, int key, bool decode) {
 	// Initial permutation
 	uint64_t permutedBlock = TDES::permute(block, 64, 64, TDES::PERMUTATION_TABLE_IP);
 
@@ -105,7 +105,7 @@ char* dev_in=NULL;
 char* dev_out=NULL;
 cudaError_t err;
 
-std::string TDESSequential::encode(std::string message) {
+std::string TDESCuda::encode(std::string message) {
 	this->prepareKeys();
 
 	// Pad the message with zeros
@@ -186,7 +186,7 @@ std::string TDESSequential::encode(std::string message) {
 	return encodedMessage;
 }
 
-std::string TDESSequential::decode(std::string message) {
+std::string TDESCuda::decode(std::string message) {
 	this->prepareKeys();
 
 	// Pad the message with zeros
@@ -254,8 +254,8 @@ std::string TDESSequential::decode(std::string message) {
         printf("cudaError(cudaMemcpyDeviceToHost): %s\n", cudaGetErrorString(err));
     }
 	
-	checkCudaErrors(cudaFree(dev_headerList));
-    checkCudaErrors(cudaFree(dev_headerCounter));
+	checkCudaErrors(cudaFree(dev_in));
+    checkCudaErrors(cudaFree(dev_out));
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -263,6 +263,6 @@ std::string TDESSequential::decode(std::string message) {
     }
 	
 
-	std::string encodedMessage(msg);
+	std::string decodedMessage(msg);
 	return decodedMessage;
 }

@@ -6,7 +6,7 @@ class TDESCuda : public TDESInterface {
 		uint64_t pKeys[3][16];
 
 		void prepareKeys();
-		uint64_t processBlock(uint64_t block, int key = 0, bool decode = false);
+		static uint64_t processBlock(uint64_t block, int key = 0, bool decode = false);
 
 	public:
 		// Inherit constructor
