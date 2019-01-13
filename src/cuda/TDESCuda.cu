@@ -18,7 +18,7 @@
 
 TDESCuda::~TDESCuda() {}
 
-__constant__ uint64_t ckeys[3][16];
+__constant__ uint64_t ckeys[3*16];
 
 __device__
 uint64_t permute(const uint64_t in, const int inSize, const int outSize, const uint8_t * table) {
@@ -82,9 +82,9 @@ uint64_t processBlock(uint64_t block, int key, bool decode) {
 		uint64_t extendedBlock = permute(previousRBlock, 32, 48, SELECTION_TABLE_E);
 
 		// XOR the extended block with a prepared key
-		uint64_t pKey = ckeys[key][i];
+		uint64_t pKey = ckeys[key*16+i];
 		if (decode) {
-			pKey = ckeys[key][15 - i];
+			pKey = ckeys[key * 16 + 15 - i];
 		}
 		uint64_t xoredBlock = pKey ^ extendedBlock;
 
@@ -211,19 +211,24 @@ std::string TDESCuda::encode(std::string message) {
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
-        printf("cudaError(Memcpy): %s\n", cudaGetErrorString(err));
+        printf("cudaError(Memcpy)dev_in: %s\n", cudaGetErrorString(err));
     }
 
-	cudaMemcpy((void*)ckeys, TDESCuda::pKeys, sizeof(uint64_t)*3*16, cudaMemcpyHostToDevice);
+	uint64_t tkeys[3 * 16];
+	for (int k = 0; k < 3; k++)
+		for (int i = 0; i < 16; i++)
+			tkeys[k * 16 + i] = TDESCuda::pKeys[k][i];
+	cudaMemcpyToSymbol(ckeys, tkeys, sizeof(uint64_t)*3*16);
 	err = cudaGetLastError();
 	if (err != cudaSuccess)
 	{
-		printf("cudaError(Memcpy): %s\n", cudaGetErrorString(err));
+		printf("cudaError(Memcpy)pKeys: %s\n", cudaGetErrorString(err));
 	}
 	
 	unsigned int numThreads = blockCount<=256?blockCount:256;
 	unsigned int gridSize = ceil((float)blockCount/256.0);
 	encodeK<<< gridSize,numThreads >>>(dev_in,dev_out,blockCount);
+	printf("exit encodeK\n");
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -248,6 +253,7 @@ std::string TDESCuda::encode(std::string message) {
 	hexString << std::hex << std::setfill('0') << std::setw(16*blockCount) << msg;
 	std::string encodedMessage = hexString.str();
 	delete[] msg;
+	std::cout << encodedMessage<<std::endl;
 	return encodedMessage;
 }
 
@@ -300,19 +306,24 @@ std::string TDESCuda::decode(std::string message) {
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
-        printf("cudaError(Memcpy): %s\n", cudaGetErrorString(err));
+        printf("cudaError(Memcpy)dev_in: %s\n", cudaGetErrorString(err));
     }
 
-	cudaMemcpy((void*)ckeys, TDESCuda::pKeys, sizeof(uint64_t) * 3 * 16, cudaMemcpyHostToDevice);
+	uint64_t tkeys[3 * 16];
+	for (int k = 0; k < 3; k++)
+		for (int i = 0; i < 16; i++)
+			tkeys[k * 16 + i] = TDESCuda::pKeys[k][i];
+	cudaMemcpyToSymbol(ckeys, tkeys, sizeof(uint64_t) * 3 * 16);
 	err = cudaGetLastError();
 	if (err != cudaSuccess)
 	{
-		printf("cudaError(Memcpy): %s\n", cudaGetErrorString(err));
+		printf("cudaError(Memcpy)pKeys: %s\n", cudaGetErrorString(err));
 	}
 	
 	unsigned int numThreads = blockCount<=256?blockCount:256;
 	unsigned int gridSize = ceil((float)blockCount/256.0);
-	encodeK<<<gridSize,numThreads>>>(dev_in,dev_out,blockCount);
+	decodeK<<<gridSize,numThreads>>>(dev_in,dev_out,blockCount);
+	printf("exit decodeK\n");
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -337,5 +348,6 @@ std::string TDESCuda::decode(std::string message) {
 	hexString << std::hex << std::setfill('0') << std::setw(16 * blockCount) << msg;
 	std::string decodedMessage = hexString.str();
 	delete[] msg;
+	std::cout << decodedMessage << std::endl;
 	return decodedMessage;
 }
