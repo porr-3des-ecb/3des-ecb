@@ -244,8 +244,9 @@ std::string TDESCuda::encode(std::string message) {
         printf("cudaError(cudaFree): %s\n", cudaGetErrorString(err));
     }
 	
-
-	std::string encodedMessage(msg);
+	std::stringstream hexString;
+	hexString << std::hex << std::setfill('0') << std::setw(16*blockCount) << msg;
+	std::string encodedMessage = hexString.str();
 	delete[] msg;
 	return encodedMessage;
 }
@@ -332,7 +333,9 @@ std::string TDESCuda::decode(std::string message) {
         printf("cudaError(cudaFree): %s\n", cudaGetErrorString(err));
     }
 	
-
-	std::string decodedMessage(msg);
+	std::stringstream hexString;
+	hexString << std::hex << std::setfill('0') << std::setw(16 * blockCount) << msg;
+	std::string decodedMessage = hexString.str();
+	delete[] msg;
 	return decodedMessage;
 }
