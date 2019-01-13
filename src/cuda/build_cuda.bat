@@ -1,0 +1,1 @@
+nvcc main.cpp TDESCuda.cu TDES_kernel.cu -o TDESCuda --use-local-env -Xcompiler -W2
