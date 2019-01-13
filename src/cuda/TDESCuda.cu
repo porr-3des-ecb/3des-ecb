@@ -1,6 +1,9 @@
-#include "TDESCuda.hpp"
+#include "TDESCuda.cuh"
 #include "../common/des_defines.hpp"
 #include "../common/des_helpers.hpp"
+
+#include "TDES_kernel.cuh"
+#include "device_launch_parameters.h"
 
 #include <iomanip>
 #include <iostream>
@@ -8,17 +11,33 @@
 #include <sstream>
 #include <cuda_runtime.h>
 #include <cmath>
+#include <cstdlib>
+#include <cstring>
 //#include <helper_functions.h>
 //#include <helper_cuda.h>
 
 TDESCuda::~TDESCuda() {}
+
+__constant__ uint64_t ckeys[3][16];
+
+__device__
+uint64_t permute(const uint64_t in, const int inSize, const int outSize, const uint8_t * table) {
+	uint64_t out = 0;
+
+	for (int i = 0; i < outSize; ++i) {
+		out = out << 1;
+		out += (in >> (inSize - table[i])) & 0x01;
+	}
+
+	return out;
+}
 
 void TDESCuda::prepareKeys() {
 	for (int k = 0; k < 3; ++k) {
 		uint64_t key = this->keys[k];
 
 		// Initial key permutation
-		uint64_t permutedKey = TDES::permute(key, 64, 56, TDES::PERMUTATION_TABLE_PC1);
+		uint64_t permutedKey = TDES::permute(key, 64, 56, PERMUTATION_TABLE_PC1);
 
 		// Left/right half-key rotations
 		uint64_t previousKey = permutedKey;
@@ -42,15 +61,15 @@ void TDESCuda::prepareKeys() {
 
 		// Final key permutation
 		for (int i = 0; i < 16; ++i) {
-			this->pKeys[k][i] = TDES::permute(pKeys[i], 56, 48, TDES::PERMUTATION_TABLE_PC2);
+			this->pKeys[k][i] = TDES::permute(pKeys[i], 56, 48, PERMUTATION_TABLE_PC2);
 		}
 	}
 }
 
 __device__
-uint64_t TDESCuda::processBlock(uint64_t block, int key, bool decode) {
+uint64_t processBlock(uint64_t block, int key, bool decode) {
 	// Initial permutation
-	uint64_t permutedBlock = TDES::permute(block, 64, 64, TDES::PERMUTATION_TABLE_IP);
+	uint64_t permutedBlock = permute(block, 64, 64, PERMUTATION_TABLE_IP);
 
 	// Encoding (16 passes)
 	uint64_t previousBlock = permutedBlock;
@@ -60,12 +79,12 @@ uint64_t TDESCuda::processBlock(uint64_t block, int key, bool decode) {
 		uint64_t previousRBlock = previousBlock & 0xffffffff;
 
 		// Extend it (32b -> 48b)
-		uint64_t extendedBlock = TDES::permute(previousRBlock, 32, 48, TDES::SELECTION_TABLE_E);
+		uint64_t extendedBlock = permute(previousRBlock, 32, 48, SELECTION_TABLE_E);
 
 		// XOR the extended block with a prepared key
-		uint64_t pKey = TDESCuda::pKeys[key][i];
+		uint64_t pKey = ckeys[key][i];
 		if (decode) {
-			pKey = TDESCuda::pKeys[key][15 - i];
+			pKey = ckeys[key][15 - i];
 		}
 		uint64_t xoredBlock = pKey ^ extendedBlock;
 
@@ -80,11 +99,11 @@ uint64_t TDESCuda::processBlock(uint64_t block, int key, bool decode) {
 			uint8_t column = (subBlock >> 1) & 0x0f;
 
 			boxSelectedBlock = boxSelectedBlock << 4;
-			boxSelectedBlock += TDES::SELECTION_BOX[j][16 * row + column];
+			boxSelectedBlock += SELECTION_BOX[j][16 * row + column];
 		}
 
 		// Final P-permutation of box selected block
-		uint64_t permutedSBlock = TDES::permute(boxSelectedBlock, 32, 32, TDES::PERMUTATION_TABLE_P);
+		uint64_t permutedSBlock = permute(boxSelectedBlock, 32, 32, PERMUTATION_TABLE_P);
 
 		// XOR the permuted box selected box with previous left block
 		uint64_t newRBlock = previousLBlock ^ permutedSBlock;
@@ -97,9 +116,47 @@ uint64_t TDESCuda::processBlock(uint64_t block, int key, bool decode) {
 	uint64_t reversedBlock = (previousBlock << 32) + (previousBlock >> 32);
 
 	// Final permutation
-	uint64_t finalBlock = TDES::permute(reversedBlock, 64, 64, TDES::PERMUTATION_TABLE_IP1);
+	uint64_t finalBlock = permute(reversedBlock, 64, 64, PERMUTATION_TABLE_IP1);
 
 	return finalBlock;
+}
+
+__global__
+void encodeK(char* in, char* out, unsigned int size)
+{
+	unsigned int index = blockIdx.x*blockDim.x + threadIdx.x;
+	if (index >= size)
+	{
+		return;
+	}
+
+	// Parse hex block into 64-bit
+	uint64_t block = *((uint64_t*)(in + 16 * index));//std::stoull(message.substr(16 * i, 16), 0, 16);
+	// Encode with k1, decode with k2, encode with k3
+	uint64_t blockPass1 = processBlock(block, 0, false);
+	uint64_t blockPass2 = processBlock(blockPass1, 1, true);
+	uint64_t blockPass3 = processBlock(blockPass2, 2, false);
+
+	memcpy(out + 16 * index, &blockPass2, 16);
+}
+
+__global__
+void decodeK(char* in, char* out, unsigned int size)
+{
+	unsigned int index = blockIdx.x*blockDim.x + threadIdx.x;
+	if (index >= size)
+	{
+		return;
+	}
+
+	// Parse hex block into 64-bit
+	uint64_t block = *((uint64_t*)(in + 16 * index));//std::stoull(message.substr(16 * i, 16), 0, 16);
+	// Decode with k3, encode with k2, decode with k1
+	uint64_t blockPass1 = processBlock(block, 2, true);
+	uint64_t blockPass2 = processBlock(blockPass1, 1, false);
+	uint64_t blockPass3 = processBlock(blockPass2, 0, true);
+
+	memcpy(out + 16 * index, &blockPass3, 16);
 }
 
 char* dev_in=NULL;
@@ -137,13 +194,13 @@ std::string TDESCuda::encode(std::string message) {
     }
 
     cudaMalloc((void**)&dev_in, sizeof(char)*message.length());
-    cudaMalloc((void**)&dev_out, sizeof(char)*message.length()*2);
+    cudaMalloc((void**)&dev_out, sizeof(char)*message.length());
 	if (err != cudaSuccess)
     {
         printf("cudaError(Malloc): %s\n", cudaGetErrorString(err));
     }
     cudaMemset(dev_in,0,sizeof(char)*message.length());
-    cudaMemset(dev_out,0,sizeof(char)*message.length()*2);
+    cudaMemset(dev_out,0,sizeof(char)*message.length());
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -155,18 +212,24 @@ std::string TDESCuda::encode(std::string message) {
     if (err != cudaSuccess)
     {
         printf("cudaError(Memcpy): %s\n", cudaGetErrorString(err));
-        return;
     }
+
+	cudaMemcpy((void*)ckeys, TDESCuda::pKeys, sizeof(uint64_t)*3*16, cudaMemcpyHostToDevice);
+	err = cudaGetLastError();
+	if (err != cudaSuccess)
+	{
+		printf("cudaError(Memcpy): %s\n", cudaGetErrorString(err));
+	}
 	
 	unsigned int numThreads = blockCount<=256?blockCount:256;
 	unsigned int gridSize = ceil((float)blockCount/256.0);
-	encode<<<gridSize,numThreads>>>(dev_in,dev_out,blockCount);
+	encodeK<<< gridSize,numThreads >>>(dev_in,dev_out,blockCount);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         printf("cudaError(encode): %s\n", cudaGetErrorString(err));
     }
-	cudaMemcpy((void*)msg,dev_out,sizeof(char)*message.length()*2,cudaMemcpyDeviceToHost);
+	cudaMemcpy((void*)msg,dev_out,sizeof(char)*message.length(),cudaMemcpyDeviceToHost);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -237,12 +300,18 @@ std::string TDESCuda::decode(std::string message) {
     if (err != cudaSuccess)
     {
         printf("cudaError(Memcpy): %s\n", cudaGetErrorString(err));
-        return;
     }
+
+	cudaMemcpy((void*)ckeys, TDESCuda::pKeys, sizeof(uint64_t) * 3 * 16, cudaMemcpyHostToDevice);
+	err = cudaGetLastError();
+	if (err != cudaSuccess)
+	{
+		printf("cudaError(Memcpy): %s\n", cudaGetErrorString(err));
+	}
 	
 	unsigned int numThreads = blockCount<=256?blockCount:256;
 	unsigned int gridSize = ceil((float)blockCount/256.0);
-	encode<<<gridSize,numThreads>>>(dev_in,dev_out,blockCount);
+	encodeK<<<gridSize,numThreads>>>(dev_in,dev_out,blockCount);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {

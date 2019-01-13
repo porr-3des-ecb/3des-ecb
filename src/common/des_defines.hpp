@@ -2,8 +2,9 @@
 #define _DES_DEFINES_HPP
 
 #include <cstdint>
+#include <cuda_runtime.h>
 
-namespace TDES {
+//namespace TDES {
 
 const uint8_t PERMUTATION_TABLE_PC1[56] = {
 	57, 49, 41, 33, 25, 17, 9,
@@ -16,6 +17,7 @@ const uint8_t PERMUTATION_TABLE_PC1[56] = {
 	21, 13, 5, 28, 20, 12, 4
 };
 
+
 const uint8_t PERMUTATION_TABLE_PC2[48] = {
 	14, 17, 11, 24, 1, 5,
 	3, 28, 15, 6, 21, 10,
@@ -27,6 +29,7 @@ const uint8_t PERMUTATION_TABLE_PC2[48] = {
 	46, 42, 50, 36, 29, 32
 };
 
+__constant__
 const uint8_t PERMUTATION_TABLE_IP[64] = {
 	58, 50, 42, 34, 26, 18, 10, 2,
 	60, 52, 44, 36, 28, 20, 12, 4,
@@ -38,6 +41,7 @@ const uint8_t PERMUTATION_TABLE_IP[64] = {
 	63, 55, 47, 39, 31, 23, 15, 7
 };
 
+__constant__
 const uint8_t SELECTION_TABLE_E[48] = {
 	32, 1, 2, 3, 4, 5,
 	4, 5, 6, 7, 8, 9,
@@ -49,6 +53,7 @@ const uint8_t SELECTION_TABLE_E[48] = {
 	28, 29, 30, 31, 32, 1
 };
 
+__constant__
 const uint8_t SELECTION_BOX[8][64] = {{
 	14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7,
 	0, 15, 7, 4, 14, 2, 13, 1, 10, 6, 12, 11, 9, 5, 3, 8,
@@ -91,6 +96,7 @@ const uint8_t SELECTION_BOX[8][64] = {{
 	2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11
 }};
 
+__constant__
 const uint8_t PERMUTATION_TABLE_P[32] = {
 	16, 7, 20, 21,
 	29, 12, 28, 17,
@@ -102,6 +108,7 @@ const uint8_t PERMUTATION_TABLE_P[32] = {
 	22, 11, 4, 25
 };
 
+__constant__
 const uint8_t PERMUTATION_TABLE_IP1[64] = {
 	40, 8, 48, 16, 56, 24, 64, 32,
 	39, 7, 47, 15, 55, 23, 63, 31,
@@ -114,6 +121,6 @@ const uint8_t PERMUTATION_TABLE_IP1[64] = {
 };
 
 // namespace TDES
-}
+//}
 
 #endif

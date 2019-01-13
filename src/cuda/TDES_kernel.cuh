@@ -1,7 +1,8 @@
 #pragma once
+#include <cuda_runtime.h>
 
 __global__
-void encode(char* in, char* out,unsigned int size);
+void encodeK(char* in, char* out,unsigned int size);
 
 __global__
-void decode(char* in, char* out,unsigned int size);
+void decodeK(char* in, char* out,unsigned int size);
