@@ -7,6 +7,7 @@
 #include <string>
 #include <sstream>
 #include <cuda_runtime.h>
+#include <cmath>
 //#include <helper_functions.h>
 //#include <helper_cuda.h>
 
@@ -62,9 +63,9 @@ uint64_t TDESCuda::processBlock(uint64_t block, int key, bool decode) {
 		uint64_t extendedBlock = TDES::permute(previousRBlock, 32, 48, TDES::SELECTION_TABLE_E);
 
 		// XOR the extended block with a prepared key
-		uint64_t pKey = this->pKeys[key][i];
+		uint64_t pKey = TDESCuda::pKeys[key][i];
 		if (decode) {
-			pKey = this->pKeys[key][15 - i];
+			pKey = TDESCuda::pKeys[key][15 - i];
 		}
 		uint64_t xoredBlock = pKey ^ extendedBlock;
 
@@ -121,35 +122,35 @@ std::string TDESCuda::encode(std::string message) {
 	// Output strings
 	int blockCount = message.length() / 16;
 	
-	checkCudaErrors(cudaSetDevice(0));
+	cudaSetDevice(0);
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         printf("cudaError(cudaSetDevice): %s\n", cudaGetErrorString(err));
     }
 
-    checkCudaErrors(cudaFree(0));
+    cudaFree(0);
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         printf("cudaError(cudaFree(0)): %s\n", cudaGetErrorString(err));
     }
 
-    checkCudaErrors(cudaMalloc((void**)&dev_in, sizeof(char)*message.length()));
-    checkCudaErrors(cudaMalloc((void**)&dev_out, sizeof(char)*message.length()*2));
+    cudaMalloc((void**)&dev_in, sizeof(char)*message.length());
+    cudaMalloc((void**)&dev_out, sizeof(char)*message.length()*2);
 	if (err != cudaSuccess)
     {
         printf("cudaError(Malloc): %s\n", cudaGetErrorString(err));
     }
-    checkCudaErrors(cudaMemset(dev_in,0,sizeof(char)*message.length()));
-    checkCudaErrors(cudaMemset(dev_out,0,sizeof(char)*message.length()*2));
+    cudaMemset(dev_in,0,sizeof(char)*message.length());
+    cudaMemset(dev_out,0,sizeof(char)*message.length()*2);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         printf("cudaError(cudaMemset): %s\n", cudaGetErrorString(err));
     }
 	
-	checkCudaErrors(cudaMemcpy((void*)dev_in, message.c_str(), sizeof(char)*message.length(), cudaMemcpyHostToDevice));
+	cudaMemcpy((void*)dev_in, message.c_str(), sizeof(char)*message.length(), cudaMemcpyHostToDevice);
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -157,23 +158,23 @@ std::string TDESCuda::encode(std::string message) {
         return;
     }
 	
-	uint numThreads = blockCount<=256?blockCount:256;
-	uint gridSize = ceil(blockCount,256);
+	unsigned int numThreads = blockCount<=256?blockCount:256;
+	unsigned int gridSize = ceil((float)blockCount/256.0);
 	encode<<<gridSize,numThreads>>>(dev_in,dev_out,blockCount);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         printf("cudaError(encode): %s\n", cudaGetErrorString(err));
     }
-	checkCudaErrors(cudaMemcpy((void*)msg,dev_out,sizeof(char)*message.length()*2,cudaMemcpyDeviceToHost));
+	cudaMemcpy((void*)msg,dev_out,sizeof(char)*message.length()*2,cudaMemcpyDeviceToHost);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         printf("cudaError(cudaMemcpyDeviceToHost): %s\n", cudaGetErrorString(err));
     }
 	
-	checkCudaErrors(cudaFree(dev_headerList));
-    checkCudaErrors(cudaFree(dev_headerCounter));
+	cudaFree(dev_in);
+    cudaFree(dev_out);
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -203,35 +204,35 @@ std::string TDESCuda::decode(std::string message) {
 	// Output strings
 	int blockCount = message.length() / 16;
 	
-	checkCudaErrors(cudaSetDevice(0));
+	cudaSetDevice(0);
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         printf("cudaError(cudaSetDevice): %s\n", cudaGetErrorString(err));
     }
 
-    checkCudaErrors(cudaFree(0));
+    cudaFree(0);
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         printf("cudaError(cudaFree(0)): %s\n", cudaGetErrorString(err));
     }
 
-    checkCudaErrors(cudaMalloc((void**)&dev_in, sizeof(char)*message.length()));
-    checkCudaErrors(cudaMalloc((void**)&dev_out, sizeof(char)*message.length()*2));
+    cudaMalloc((void**)&dev_in, sizeof(char)*message.length());
+    cudaMalloc((void**)&dev_out, sizeof(char)*message.length()*2);
 	if (err != cudaSuccess)
     {
         printf("cudaError(Malloc): %s\n", cudaGetErrorString(err));
     }
-    checkCudaErrors(cudaMemset(dev_in,0,sizeof(char)*message.length()));
-    checkCudaErrors(cudaMemset(dev_out,0,sizeof(char)*message.length()*2));
+    cudaMemset(dev_in,0,sizeof(char)*message.length());
+    cudaMemset(dev_out,0,sizeof(char)*message.length()*2);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         printf("cudaError(cudaMemset): %s\n", cudaGetErrorString(err));
     }
 	
-	checkCudaErrors(cudaMemcpy((void*)dev_in, message.c_str(), sizeof(char)*message.length(), cudaMemcpyHostToDevice));
+	cudaMemcpy((void*)dev_in, message.c_str(), sizeof(char)*message.length(), cudaMemcpyHostToDevice);
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -239,23 +240,23 @@ std::string TDESCuda::decode(std::string message) {
         return;
     }
 	
-	uint numThreads = blockCount<=256?blockCount:256;
-	uint gridSize = ceil(blockCount,256);
+	unsigned int numThreads = blockCount<=256?blockCount:256;
+	unsigned int gridSize = ceil((float)blockCount/256.0);
 	encode<<<gridSize,numThreads>>>(dev_in,dev_out,blockCount);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         printf("cudaError(encode): %s\n", cudaGetErrorString(err));
     }
-	checkCudaErrors(cudaMemcpy((void*)msg,dev_out,sizeof(char)*message.length()*2,cudaMemcpyDeviceToHost));
+	cudaMemcpy((void*)msg,dev_out,sizeof(char)*message.length()*2,cudaMemcpyDeviceToHost);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         printf("cudaError(cudaMemcpyDeviceToHost): %s\n", cudaGetErrorString(err));
     }
 	
-	checkCudaErrors(cudaFree(dev_in));
-    checkCudaErrors(cudaFree(dev_out));
+	cudaFree(dev_in);
+    cudaFree(dev_out);
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {

@@ -3,10 +3,9 @@
 class TDESCuda : public TDESInterface {
 	private:
 		bool keysPrepared;
-		uint64_t pKeys[3][16];
+		static uint64_t pKeys[3][16];
 
 		void prepareKeys();
-		static uint64_t processBlock(uint64_t block, int key = 0, bool decode = false);
 
 	public:
 		// Inherit constructor
@@ -15,4 +14,6 @@ class TDESCuda : public TDESInterface {
 
 		std::string encode(std::string message);
 		std::string decode(std::string message);
+
+		static uint64_t processBlock(uint64_t block, int key = 0, bool decode = false);
 };
