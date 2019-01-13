@@ -2,7 +2,7 @@
 #include <fstream>
 #include <string>
 
-#include "TDEScuda.hpp"
+#include "TDEScuda.cuh"
 #include "../common/des_helpers.hpp"
 #include <chrono>
 #include <sstream>
