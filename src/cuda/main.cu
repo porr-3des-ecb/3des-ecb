@@ -51,10 +51,10 @@ int main(int argc, char const *argv[]) {
 	double calculationTime = timeSpan.count();
 
 	// Verify original data with encoded/decoded one
-	if (originalMessage.compare(decodedMessage) != 0) {
+	if (originalMessage.substr(0, 64).compare(decodedMessage.substr(0, 64)) != 0) {
 		std::cout << "Original and encoded/decoded messages differ!" << std::endl;
-		std::cout << "Original:  " << originalMessage << std::endl;
-		std::cout << "Processed: " << decodedMessage << std::endl;
+		std::cout << "Original:  " << originalMessage.substr(0,64) << std::endl;
+		std::cout << "Processed: " << decodedMessage.substr(0,64) << std::endl;
 	}
 
 	// Display processing time
