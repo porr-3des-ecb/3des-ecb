@@ -137,7 +137,7 @@ void encodeK(char* in, char* out, unsigned int size)
 	uint64_t blockPass2 = processBlock(blockPass1, 1, true);
 	uint64_t blockPass3 = processBlock(blockPass2, 2, false);
 
-	memcpy(out + 16 * index, &blockPass2, 16);
+	memcpy(out + 16 * index, &blockPass3, 16);
 }
 
 __global__
@@ -300,13 +300,13 @@ std::string TDESCuda::decode(std::string message) {
     }
 
     cudaMalloc((void**)&dev_in, sizeof(char)*message.length());
-    cudaMalloc((void**)&dev_out, sizeof(char)*message.length()*2);
+    cudaMalloc((void**)&dev_out, sizeof(char)*message.length());
 	if (err != cudaSuccess)
     {
         printf("cudaError(Malloc): %s\n", cudaGetErrorString(err));
     }
     cudaMemset(dev_in,0,sizeof(char)*message.length());
-    cudaMemset(dev_out,0,sizeof(char)*message.length()*2);
+    cudaMemset(dev_out,0,sizeof(char)*message.length());
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
