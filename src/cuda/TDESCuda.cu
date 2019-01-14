@@ -261,7 +261,7 @@ std::string TDESCuda::encode(std::string message) {
 		tmp = *(((uint64_t*)msg) + i);
 		hexString << std::hex << std::setfill('0') << std::setw(16) << tmp;
 		encodedMessage.append(hexString.str());
-		hexString.clear();
+		hexString.str(std::string());
 	}
 	delete[] msg;
 	//std::cout << encodedMessage<<std::endl;
@@ -369,7 +369,7 @@ std::string TDESCuda::decode(std::string message) {
 		tmp = *(((uint64_t*)msg) + i);
 		hexString << std::hex << std::setfill('0') << std::setw(16) << tmp;
 		decodedMessage.append(hexString.str());
-		hexString.clear();
+		hexString.str(std::string());
 	}
 	delete[] msg;
 	//std::cout << decodedMessage << std::endl;
