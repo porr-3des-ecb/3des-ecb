@@ -363,6 +363,6 @@ std::string TDESCuda::decode(std::string message) {
 		decodedMessage.append(hexString.str());
 	}
 	delete[] msg;
-	std::cout << decodedMessage << std::endl;
+	//std::cout << decodedMessage << std::endl;
 	return decodedMessage;
 }
