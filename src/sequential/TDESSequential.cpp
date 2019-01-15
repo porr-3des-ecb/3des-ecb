@@ -111,7 +111,7 @@ std::string TDESSequential::encode(std::string message) {
 	// Encode
 	// Output strings
 	int blockCount = message.length() / 16;
-	std::string encodedMessages[blockCount];
+	std::string* encodedMessages=new std::string[blockCount];
 
 	// Iterate over blocks
 	for (int i = 0; i < blockCount; ++i) {
@@ -149,7 +149,7 @@ std::string TDESSequential::decode(std::string message) {
 	// Decode
 	// Output strings
 	int blockCount = message.length() / 16;
-	std::string decodedMessages[blockCount];
+	std::string* decodedMessages=new std::string[blockCount];
 
 	// Iterate over blocks
 	for (int i = 0; i < blockCount; ++i) {
