@@ -122,7 +122,7 @@ uint64_t processBlock(uint64_t block, int key, bool decode) {
 }
 
 __global__
-void encodeK(char* in, char* out, unsigned int size)
+void encodeK(char* in, uint64_t* out, unsigned int size)
 {
 	unsigned int index = blockIdx.x*blockDim.x + threadIdx.x;
 	if (index >= size)
@@ -153,11 +153,11 @@ void encodeK(char* in, char* out, unsigned int size)
 	uint64_t blockPass2 = processBlock(blockPass1, 1, true);
 	uint64_t blockPass3 = processBlock(blockPass2, 2, false);
 
-	memcpy(out + 16 * index, &blockPass3, 16);
+	memcpy(out + sizeof(uint64_t) * index, &blockPass3, sizeof(uint64_t));
 }
 
 __global__
-void decodeK(char* in, char* out, unsigned int size)
+void decodeK(char* in, uint64_t* out, unsigned int size)
 {
 	unsigned int index = blockIdx.x*blockDim.x + threadIdx.x;
 	if (index >= size)
@@ -188,11 +188,11 @@ void decodeK(char* in, char* out, unsigned int size)
 	uint64_t blockPass2 = processBlock(blockPass1, 1, false);
 	uint64_t blockPass3 = processBlock(blockPass2, 0, true);
 
-	memcpy(out + 16 * index, &blockPass3, 16);
+	memcpy(out + sizeof(uint64_t) * index, &blockPass3, sizeof(uint64_t));
 }
 
 char* dev_in=NULL;
-char* dev_out=NULL;
+uint64_t* dev_out=NULL;
 cudaError_t err;
 
 std::string TDESCuda::encode(std::string message) {
@@ -205,11 +205,11 @@ std::string TDESCuda::encode(std::string message) {
 		padding = 0;
 	}
 	message.append(padding, '0');
-	char* msg = new char[message.length()+1];
 
 	// Encode
 	// Output strings
 	int blockCount = message.length() / 16;
+	uint64_t* msg = new uint64_t[blockCount];
 
 	cudaSetDevice(0);
     err = cudaGetLastError();
@@ -226,13 +226,13 @@ std::string TDESCuda::encode(std::string message) {
     }
 
     cudaMalloc((void**)&dev_in, sizeof(char)*message.length());
-    cudaMalloc((void**)&dev_out, sizeof(char)*message.length());
+    cudaMalloc((void**)&dev_out, sizeof(uint64_t)*blockCount);
 	if (err != cudaSuccess)
     {
         printf("cudaError(Malloc): %s\n", cudaGetErrorString(err));
     }
     cudaMemset(dev_in,0,sizeof(char)*message.length());
-    cudaMemset(dev_out,0,sizeof(char)*message.length());
+    cudaMemset(dev_out,0,sizeof(uint64_t)*blockCount);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -269,7 +269,7 @@ std::string TDESCuda::encode(std::string message) {
 	{
 		printf("exit2 encodeK\n");
 	}
-	cudaMemcpy((void*)msg,dev_out,sizeof(char)*message.length(),cudaMemcpyDeviceToHost);
+	cudaMemcpy((void*)msg,dev_out, sizeof(uint64_t)*blockCount,cudaMemcpyDeviceToHost);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -285,13 +285,10 @@ std::string TDESCuda::encode(std::string message) {
     }
 
 	std::stringstream hexString;
-	msg[message.length()] = 0;
 	std::string encodedMessage;
-	uint64_t tmp;
 	for (int i = 0; i < blockCount; i++)
 	{
-		tmp = *(((uint64_t*)msg) + i);
-		hexString << std::hex << std::setfill('0') << std::setw(16) << tmp;
+		hexString << std::hex << std::setfill('0') << std::setw(16) << msg[i];
 		encodedMessage.append(hexString.str());
 		hexString.str(std::string());
 	}
@@ -311,11 +308,10 @@ std::string TDESCuda::decode(std::string message) {
 	}
 	message.append(padding, '0');
 
-	char* msg = new char[message.length()+1];
-
 	// Encode
 	// Output strings
 	int blockCount = message.length() / 16;
+	uint64_t* msg = new uint64_t[blockCount];
 
 	cudaSetDevice(0);
     err = cudaGetLastError();
@@ -332,13 +328,13 @@ std::string TDESCuda::decode(std::string message) {
     }
 
     cudaMalloc((void**)&dev_in, sizeof(char)*message.length());
-    cudaMalloc((void**)&dev_out, sizeof(char)*message.length());
+    cudaMalloc((void**)&dev_out, sizeof(uint64_t)*blockCount);
 	if (err != cudaSuccess)
     {
         printf("cudaError(Malloc): %s\n", cudaGetErrorString(err));
     }
     cudaMemset(dev_in,0,sizeof(char)*message.length());
-    cudaMemset(dev_out,0,sizeof(char)*message.length());
+    cudaMemset(dev_out,0, sizeof(uint64_t)*blockCount);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -373,7 +369,7 @@ std::string TDESCuda::decode(std::string message) {
         printf("cudaError(encode): %s\n", cudaGetErrorString(err));
     }
 
-	cudaMemcpy((void*)msg,dev_out,sizeof(char)*message.length(),cudaMemcpyDeviceToHost);
+	cudaMemcpy((void*)msg,dev_out, sizeof(uint64_t)*blockCount,cudaMemcpyDeviceToHost);
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -393,13 +389,10 @@ std::string TDESCuda::decode(std::string message) {
     }
 
 	std::stringstream hexString;
-	msg[message.length()] = 0;
 	std::string decodedMessage;
-	uint64_t tmp;
 	for (int i = 0; i < blockCount; i++)
 	{
-		tmp = *(((uint64_t*)msg) + i);
-		hexString << std::hex << std::setfill('0') << std::setw(16) << tmp;
+		hexString << std::hex << std::setfill('0') << std::setw(16) << msg[i];
 		decodedMessage.append(hexString.str());
 		hexString.str(std::string());
 	}
