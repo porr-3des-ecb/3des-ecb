@@ -8,3 +8,4 @@ set (tdes_sequential_sources
 )
 
 add_executable(tdes_sequential ${tdes_sequential_sources})
+target_compile_options(tdes_sequential PRIVATE -Wall -Wextra -Wpedantic)

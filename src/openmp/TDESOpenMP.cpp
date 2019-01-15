@@ -113,7 +113,7 @@ std::string TDESOpenMP::encode(std::string message) {
 	// Encode
 	// Output strings
 	int blockCount = message.length() / 16;
-	std::string encodedMessages[blockCount];
+	std::string* encodedMessages = new std::string[blockCount];
 
 	// Iterate over blocks
 	int i = 0;
@@ -155,7 +155,7 @@ std::string TDESOpenMP::decode(std::string message) {
 	// Decode
 	// Output strings
 	int blockCount = message.length() / 16;
-	std::string decodedMessages[blockCount];
+	std::string* decodedMessages = new std::string[blockCount];
 
 	// Iterate over blocks
 	int i = 0;
