@@ -1,0 +1,1 @@
+nvcc main.cu TDESCuda.cu ../TDESInterface.cpp ../common/des_helpers.cpp -o TDESCuda --use-local-env
