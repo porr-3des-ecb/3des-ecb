@@ -140,11 +140,13 @@ void encodeK(char* in, uint64_t* out, unsigned int size)
 		if (ctmp <= 57 && ctmp >= 48)
 		{
 			block += ctmp-48;
-			block <<= 4;
 		}
 		else if (ctmp <= 102 && ctmp >= 97)
 		{
-			block += ctmp - 97;
+			block += ctmp - 87;
+		}
+		if (i < 15)
+		{
 			block <<= 4;
 		}
 	}
@@ -153,7 +155,8 @@ void encodeK(char* in, uint64_t* out, unsigned int size)
 	uint64_t blockPass2 = processBlock(blockPass1, 1, true);
 	uint64_t blockPass3 = processBlock(blockPass2, 2, false);
 
-	memcpy(out + sizeof(uint64_t) * index, &blockPass3, sizeof(uint64_t));
+	//memcpy(out + sizeof(uint64_t) * index, &block/*Pass3*/, sizeof(uint64_t));
+	out[index] = blockPass3;
 }
 
 __global__
@@ -175,11 +178,13 @@ void decodeK(char* in, uint64_t* out, unsigned int size)
 		if (ctmp <= 57 && ctmp >= 48)
 		{
 			block += ctmp - 48;
-			block <<= 4;
 		}
 		else if (ctmp <= 102 && ctmp >= 97)
 		{
-			block += ctmp - 97;
+			block += ctmp - 87;
+		}
+		if (i < 15)
+		{
 			block <<= 4;
 		}
 	}
@@ -188,7 +193,8 @@ void decodeK(char* in, uint64_t* out, unsigned int size)
 	uint64_t blockPass2 = processBlock(blockPass1, 1, false);
 	uint64_t blockPass3 = processBlock(blockPass2, 0, true);
 
-	memcpy(out + sizeof(uint64_t) * index, &blockPass3, sizeof(uint64_t));
+	//memcpy(out + sizeof(uint64_t) * index, &block/*Pass3*/, sizeof(uint64_t));
+	out[index] = blockPass3;
 }
 
 char* dev_in=NULL;
