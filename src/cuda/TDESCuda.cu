@@ -42,6 +42,7 @@ void TDESCuda::prepareKeys() {
 		// Left/right half-key rotations
 		uint64_t previousKey = permutedKey;
 		uint64_t pKeys[16];
+#pragma unroll
 		for (int i = 0; i < 16; ++i) {
 			// Split the key in 2
 			uint64_t lKey = (previousKey >> 28) & 0x0fffffff;
@@ -60,6 +61,7 @@ void TDESCuda::prepareKeys() {
 		}
 
 		// Final key permutation
+#pragma unroll
 		for (int i = 0; i < 16; ++i) {
 			this->pKeys[k][i] = TDES::permute(pKeys[i], 56, 48, PERMUTATION_TABLE_PC2);
 		}
@@ -73,6 +75,7 @@ uint64_t processBlock(uint64_t block, int key, bool decode) {
 
 	// Encoding (16 passes)
 	uint64_t previousBlock = permutedBlock;
+#pragma unroll
 	for (int i = 0; i < 16; ++i) {
 		// Split previous block in 2
 		uint64_t previousLBlock = (previousBlock >> 32) & 0xffffffffULL;
@@ -90,6 +93,7 @@ uint64_t processBlock(uint64_t block, int key, bool decode) {
 
 		// Do the "selection-boxes" magic
 		uint64_t boxSelectedBlock = 0;
+#pragma unroll
 		for (int j = 0; j < 8; ++j) {
 			// Take 6 bits, starting with the highest
 			uint8_t subBlock = (xoredBlock >> (6 * (7 - j))) & 0x3fULL;
@@ -134,6 +138,7 @@ void encodeK(char* in, uint64_t* out, unsigned int size)
 	//uint64_t block = *((uint64_t*)(in + 16 * index));//std::stoull(message.substr(16 * i, 16), 0, 16);
 	uint64_t block = 0;
 	char ctmp;
+#pragma unroll
 	for (int i = 0; i < 16; i++)
 	{
 		ctmp = in[16 * index + i];
@@ -172,6 +177,7 @@ void decodeK(char* in, uint64_t* out, unsigned int size)
 	//uint64_t block = *((uint64_t*)(in + 16 * index));//std::stoull(message.substr(16 * i, 16), 0, 16);
 	uint64_t block = 0;
 	char ctmp;
+#pragma unroll
 	for (int i = 0; i < 16; i++)
 	{
 		ctmp = in[16 * index + i];
